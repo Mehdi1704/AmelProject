@@ -70,3 +70,20 @@ def create_csv_submission(ids, y_pred, name):
         writer.writeheader()
         for r1, r2 in zip(ids, y_pred):
             writer.writerow({"Id": int(r1), "Prediction": int(r2)})
+
+def train_test_split(X, y, test_size=0.2, random_state=None):
+    """Split the data into train and test sets."""
+    if random_state is not None:
+        np.random.seed(random_state)
+
+    n_samples = len(X)
+    n_test = int(test_size * n_samples)
+
+    indices = np.random.permutation(n_samples)
+    test_indices = indices[:n_test]
+    train_indices = indices[n_test:]
+
+    X_train, X_test = X[train_indices], X[test_indices]
+    y_train, y_test = y[train_indices], y[test_indices]
+
+    return X_train, X_test, y_train, y_test
