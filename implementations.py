@@ -96,12 +96,19 @@ def least_squares(y, tx):
     loss : float
         The MSE loss corresponding to the optimal weights.
     """
-    w = np.linalg.solve(tx.T.dot(tx), tx.T.dot(y))
-    loss = compute_loss_mse(y, tx, w)
-    return w, loss
+    N=y.shape[0]
+    D=tx.shape[1]
+    w=np.zeros(D)
+
+    A=tx.T@tx
+    b=tx.T@y
+    w=np.linalg.lstsq(A,b)[0]
+    loss=compute_loss_mse(y,tx,w)
+    
+    return w , loss
 
 
-def ridge_regression(y, tx, lambda_=0.5):
+def ridge_regression(y, tx, lambda_):
     """
     Implement Ridge Regression using the normal equations.
 
@@ -119,11 +126,13 @@ def ridge_regression(y, tx, lambda_=0.5):
     loss : float
         The MSE loss corresponding to the optimal weights.
     """
-    N = tx.shape[0]
-    D = tx.shape[1]
-    w = np.linalg.solve(tx.T.dot(tx) + lambda_ * 2 * N * np.identity(D), tx.T.dot(y))
-    loss = compute_loss_mse(y, tx, w)
-    return w, loss
+    D=tx.shape[1]
+    N=tx.shape[0]
+    A=tx.T@tx+(2*N*lambda_)*np.identity(D)
+    b=tx.T@y
+    w=np.linalg.solve(A,b)
+    loss=compute_loss_mse(y,tx,w)
+    return w,loss
 
 
 def logistic_regression(y, tx, initial_w, max_iters, gamma):
