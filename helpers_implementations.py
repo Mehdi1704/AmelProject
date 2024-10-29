@@ -1,69 +1,68 @@
 import numpy as np
 
-def compute_mse(y, tx, w):
-    """Calculate the loss using MSE.
+def compute_gradient_mse(y, tx, w):
+    """
+    Compute the gradient of the MSE (Mean Squared Error) loss function.
 
-    Args:
-        y: numpy array of shape=(N, )
-        tx: numpy array of shape=(N,D)
-        w: numpy array of shape=(D,). The vector of model parameters.
+    Parameters:
+    y : numpy array of shape (N,)
+        The target values.
+    tx : numpy array of shape (N, D)
+        The input data.
+    w : numpy array of shape (D,)
+        The model weights.
 
     Returns:
-        the value of the loss (a scalar), corresponding to the input parameters w.
+    gradient : numpy array of shape (D,)
+        The gradient of the MSE loss with respect to the weights w.
     """
-    N=y.shape[0]
-    L=(1/(2*N))*((y-tx@w)**2)
-    return np.sum(L)
-
-def compute_gradient(y, tx, w):
-    """Computes the gradient at w.
-
-    Args:
-        y: numpy array of shape=(N, )
-        tx: numpy array of shape=(N,2)
-        w: numpy array of shape=(2, ). The vector of model parameters.
-
-    Returns:
-        grad: a numpy array of shape (2, ) (same shape as w), containing the gradient of the loss at w.
-    """
-    N = y.shape[0]
+    N = len(y)
     error = y - tx.dot(w)
-    grad = - tx.T.dot(error) / N
-    return grad
+    gradient = -1 / N * tx.T.dot(error)
+    return gradient
 
-def build_poly(x, degree):
-    """Function that build a polynomial feature expansion of an array.
-    The expansion chosen in that case is:
-        given x=np.array([1,2,3],
-                         [4,5,6])
-        the expansion of degree 2 will be
-                np.array([1,1,1,1,2,3,1,4,9],
-                         [1,1,1,4,5,6,16,25,36])
+def compute_loss_mse(y, tx, w):
+    """
+    Compute the Mean Squared Error (MSE) loss.
 
-    
-
-    Args:
-        x (ndarray): the array to be taken in consideration
-        degree (int): the degree of the feature expansion
+    Parameters:
+    y : numpy array of shape (N,)
+        The target values.
+    tx : numpy array of shape (N, D)
+        The input data.
+    w : numpy array of shape (D,)
+        The model weights.
 
     Returns:
-        ndarray: the expanded data 
+    loss : float
+        The MSE loss.
     """
-    poly=np.ones((x.shape[0],x.shape[1]))
-    for i in range(1,degree+1):
-        expansion=np.power(x,i)
-        poly=np.c_[poly,expansion]
-    return poly
+    N = len(y)
+    squared_error = (y - tx.dot(w)) ** 2
+    loss = 1 / (2 * N) * np.sum(squared_error)
+    return loss
 
 def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
     """
     Generate a minibatch iterator for a dataset.
-    Takes as input two iterables (here the output desired values 'y' and the input data 'tx')
-    Outputs an iterator which gives mini-batches of `batch_size` matching elements from `y` and `tx`.
-    Data can be randomly shuffled to avoid ordering in the original data messing with the randomness of the minibatches.
-    Example of use :
-    for minibatch_y, minibatch_tx in batch_iter(y, tx, 32):
-        <DO-SOMETHING>
+
+    Parameters:
+    y : numpy array
+        Output desired values.
+    tx : numpy array
+        Input data.
+    batch_size : int
+        Size of each mini-batch.
+    num_batches : int
+        Number of batches to generate.
+    shuffle : bool
+        Whether to shuffle the data before creating batches.
+
+    Yields:
+    minibatch_y : numpy array
+        Mini-batch of output values.
+    minibatch_tx : numpy array
+        Mini-batch of input data.
     """
     data_size = len(y)
 
@@ -79,3 +78,63 @@ def batch_iter(y, tx, batch_size, num_batches=1, shuffle=True):
         end_index = min((batch_num + 1) * batch_size, data_size)
         if start_index != end_index:
             yield shuffled_y[start_index:end_index], shuffled_tx[start_index:end_index]
+
+#################################### LOGISTIC REGRESSION HELPERS ###############################################
+
+def sigmoid(t):
+    """
+    Apply the sigmoid function on t.
+
+    Parameters:
+    t : numpy array
+        Input data.
+
+    Returns:
+    s : numpy array
+        The sigmoid of the input data.
+    """
+    t = np.where(t > 500, 500, t)
+    t = np.where(t < -500, -500, t)
+    return 1.0 / (1.0 + np.exp(-t))
+
+
+def compute_logistic_loss(y, tx, w):
+    """
+    Compute the cost by negative log likelihood for logistic regression.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    w : numpy array of shape (D,)
+        The model weights.
+
+    Returns:
+    loss : float
+        The negative log likelihood loss.
+    """
+    y_pred = sigmoid(np.dot(tx, w))
+    y_pred = np.clip(y_pred, 1e-10, 1 - 1e-10)
+    return -np.mean(y * np.log(y_pred) + (1 - y) * np.log(1 - y_pred))
+
+
+def compute_gradient_logistic(y, tx, w):
+    """
+    Compute the gradient of the logistic loss.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    w : numpy array of shape (D,)
+        The model weights.
+
+    Returns:
+    gradient : numpy array of shape (D,)
+        The gradient of the logistic loss with respect to w.
+    """
+    pred = sigmoid(tx.dot(w))
+    gradient = tx.T.dot(pred - y)
+    return gradient / len(y)

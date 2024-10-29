@@ -1,163 +1,307 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from helpers import *
-from helpers_logistic import *
 from helpers_implementations import *
 
-def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
-    """The Gradient Descent (GD) algorithm.
 
-    Args:
-        y: numpy array of shape=(N, )
-        tx: numpy array of shape=(N,D)
-        initial_w: numpy array of shape=(D, ). The initial guess (or the initialization) for the model parameters
-        max_iters: a scalar denoting the total number of iterations of GD
-        gamma: a scalar denoting the stepsize
+def mean_squared_error_gd(y, tx, initial_w, max_iters, gamma):
+    """
+    Perform Gradient Descent to minimize MSE loss.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target values.
+    tx : numpy array of shape (N, D)
+        The input data.
+    initial_w : numpy array of shape (D,)
+        The initial weights.
+    max_iters : int
+        The maximum number of iterations.
+    gamma : float
+        The learning rate.
 
     Returns:
-        w: numpy array of shape (D, ). The final model parameters after GD
-        loss: The corresponding loss value (cost function) for the final model parameters
+    w : numpy array of shape (D,)
+        The optimized weights.
+    loss : float
+        The MSE loss corresponding to the optimized weights.
     """
+    if max_iters == 0:
+        return (initial_w, compute_loss_mse(y, tx, initial_w))
     w = initial_w
-    N = y.shape[0]
-    for _ in range(max_iters):
-        error = y - tx.dot(w)
-        gradient = - tx.T.dot(error) / N
+    for iter in range(max_iters):
+        gradient = compute_gradient_mse(y, tx, w)
         w = w - gamma * gradient
-        
-    loss = compute_mse(y, tx, w)
-    return w, loss 
+        if iter % 100 == 0:
+            print(
+                "Current iteration={i}, loss={l}".format(
+                    i=iter, l=compute_loss_mse(y, tx, w)
+                )
+            )
+    loss = compute_loss_mse(y, tx, w)
+    return w, loss
+
 
 def mean_squared_error_sgd(y, tx, initial_w, max_iters, gamma):
-    """Stochastic Gradient Descent (SGD) algorithm with mini-batch size 1.
+    """
+    Perform Stochastic Gradient Descent to minimize MSE loss.
 
-    Args:
-        y: numpy array of shape=(N, )
-        tx: numpy array of shape=(N,D)
-        initial_w: numpy array of shape=(D, ). The initial guess (or the initialization) for the model parameters
-        max_iters: a scalar denoting the total number of iterations of SGD
-        gamma: a scalar denoting the stepsize
+    Parameters:
+    y : numpy array of shape (N,)
+        The target values.
+    tx : numpy array of shape (N, D)
+        The input data.
+    initial_w : numpy array of shape (D,)
+        The initial weights.
+    max_iters : int
+        The maximum number of iterations.
+    gamma : float
+        The learning rate.
 
     Returns:
-        w: numpy array of shape (2, ). The final model parameters after SGD
-        loss: The corresponding loss value (cost function) for the final model parameters
+    w : numpy array of shape (D,)
+        The optimized weights.
+    loss : float
+        The MSE loss corresponding to the optimized weights.
     """
+    if max_iters == 0:
+        return (initial_w, compute_loss_mse(y, tx, initial_w))
     w = initial_w
-    for _ in range(max_iters):
-        # Randomly shuffle the data
-        indices = np.random.permutation(np.arange(len(y)))
-        for y_batch, tx_batch in batch_iter(
-            y, tx, batch_size=1, num_batches=1
-        ):
-            gradient = compute_gradient(y_batch, tx_batch, w)
+    for iter in range(max_iters):
+        for minibatch_y, minibatch_tx in batch_iter(y, tx, 1):
+            gradient = compute_gradient_mse(minibatch_y, minibatch_tx, w)
             w = w - gamma * gradient
-        
-    loss = compute_mse(y, tx, w)
+        if iter % 100 == 0:
+            print(
+                "Current iteration={i}, loss={l}".format(
+                    i=iter, l=compute_loss_mse(y, tx, w)
+                )
+            )
+
+    loss = compute_loss_mse(y, tx, w)
     return w, loss
 
 
 def least_squares(y, tx):
-    """Calculate the least squares solution.
-       returns mse, and optimal weights.
+    """
+    Calculate the least squares solution using the normal equations.
 
-    Args:
-        y: numpy array of shape (N,), N is the number of samples.
-        tx: numpy array of shape (N,D), D is the number of features.
+    Parameters:
+    y : numpy array of shape (N,)
+        The target values.
+    tx : numpy array of shape (N, D)
+        The input data.
 
     Returns:
-        w: optimal weights, numpy array of shape(D,), D is the number of features.
-        mse: scalar.
-
-    >>> least_squares(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]))
-    (array([ 0.21212121, -0.12121212]), 8.666684749742561e-33)
+    w : numpy array of shape (D,)
+        The optimal weights minimizing the MSE.
+    loss : float
+        The MSE loss corresponding to the optimal weights.
     """
-    N=y.shape[0]
-    D=tx.shape[1]
-    w=np.zeros(D)
-
-    A=tx.T@tx ## DxD
-    b=tx.T@y ## D
-    w=np.linalg.lstsq(A,b)[0]
-    loss=compute_mse(y,tx,w)
-    
-    return w , loss
+    w = np.linalg.solve(tx.T.dot(tx), tx.T.dot(y))
+    loss = compute_loss_mse(y, tx, w)
+    return w, loss
 
 
-def ridge_regression(y, tx, lambda_):
-    """implement ridge regression.
+def ridge_regression(y, tx, lambda_=0.5):
+    """
+    Implement Ridge Regression using the normal equations.
 
-    Args:
-        y: numpy array of shape (N,), N is the number of samples.
-        tx: numpy array of shape (N,D), D is the number of features.
-        lambda_: scalar.
+    Parameters:
+    y : numpy array of shape (N,)
+        The target values.
+    tx : numpy array of shape (N, D)
+        The input data.
+    lambda_ : float
+        Regularization parameter.
 
     Returns:
-        w: optimal weights, numpy array of shape(D,), D is the number of features.
-
-    >>> ridge_regression(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]), 0)
-    array([ 0.21212121, -0.12121212])
-    >>> ridge_regression(np.array([0.1,0.2]), np.array([[2.3, 3.2], [1., 0.1]]), 1)
-    array([0.03947092, 0.00319628])
+    w : numpy array of shape (D,)
+        The optimal weights minimizing the regularized MSE.
+    loss : float
+        The MSE loss corresponding to the optimal weights.
     """
-    D=tx.shape[1]
-    N=tx.shape[0]
-    A=tx.T@tx+(2*N*lambda_)*np.identity(D)
-    b=tx.T@y
-    w=np.linalg.solve(A,b)
-    loss=compute_mse(y,tx,w)
-    return w,loss
+    N = tx.shape[0]
+    D = tx.shape[1]
+    w = np.linalg.solve(tx.T.dot(tx) + lambda_ * 2 * N * np.identity(D), tx.T.dot(y))
+    loss = compute_loss_mse(y, tx, w)
+    return w, loss
+
 
 def logistic_regression(y, tx, initial_w, max_iters, gamma):
-    """Implement Logistic Regression by Gradient Descent
-
-    Args:
-        y: numpy array of shape (N,), N is the number of samples.
-        tx: numpy array of shape (N,D), D is the number of features.
-        initial_w : numpy array of shape (D,) with the inital model parameters
-        max_iters (_type_): the maximum number of iteration
-        gamma (_type_): Gradient Descent Stepsize
-
-    Returns:
-        w: optimized parameters
-        loss: logistic loss of the model
     """
-    threshold=1e-8
-    losses=[]
-    w=initial_w
-    for iter in range(max_iters):
-        loss, w=learning_by_gradient_descent(y,tx,w,gamma)
-        losses.append(loss)
-        if len(losses)>1 and np.abs(losses[-1]-losses[-2])<threshold:
-            break
-    return w , loss
+    Perform logistic regression using Gradient Descent.
 
-
-def reg_logistic_regression(y, tx, lambda_ ,initial_w, max_iters, gamma):
-    """Implement Penalized Logistic Regression by Gradient Descent
-
-    Args:
-        y: numpy array of shape (N,), N is the number of samples.
-        tx: numpy array of shape (N,D), D is the number of features.
-        lambda_ : penalisation scalar
-        initial_w : numpy array of shape (D,) with the inital model parameters
-        max_iters (_type_): the maximum number of iteration
-        gamma (_type_): Gradient Descent Stepsize
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    initial_w : numpy array of shape (D,)
+        The initial weights.
+    max_iters : int
+        The maximum number of iterations.
+    gamma : float
+        The learning rate.
 
     Returns:
-        w: optimized parameters
-        loss: logistic loss of the model
-    """    
-    w=initial_w
-    threshold=1e-8
-    losses=[]
+    w : numpy array of shape (D,)
+        The optimized weights.
+    loss : float
+        The logistic loss corresponding to the optimized weights.
+    """
+    if max_iters == 0:
+        return (initial_w, compute_logistic_loss(y, tx, initial_w))
+
+    w = initial_w
     for iter in range(max_iters):
-        norm_w=np.linalg.norm(w)
-        loss=calculate_loss(y,tx,w)
-        gradient=calculate_gradient(y,tx,w)
-        loss+=lambda_*norm_w*norm_w
-        gradient+=2*lambda_*w
-        w-=gamma*gradient
-        losses.append(loss)
-        if len(losses)>1 and np.abs(losses[-1]-losses[-2])<threshold:
-            break
+        gradient = compute_gradient_logistic(y, tx, w)
+        w = w - gamma * gradient
+        if iter % 100 == 0:
+            print(
+                "Current iteration={i}, loss={l}".format(
+                    i=iter, l=compute_logistic_loss(y, tx, w)
+                )
+            )
+    loss = compute_logistic_loss(y, tx, w)
+    return w, loss
+
+
+def reg_logistic_regression(y, tx, lambda_, initial_w, max_iters, gamma):
+    """
+    Perform regularized logistic regression using Gradient Descent.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    lambda_ : float
+        Regularization parameter.
+    initial_w : numpy array of shape (D,)
+        The initial weights.
+    max_iters : int
+        The maximum number of iterations.
+    gamma : float
+        The learning rate.
+
+    Returns:
+    w : numpy array of shape (D,)
+        The optimized weights.
+    loss : float
+        The logistic loss corresponding to the optimized weights.
+    """
+    if max_iters == 0:
+        return (initial_w, compute_logistic_loss(y, tx, initial_w))
+
+    w = initial_w
+    for iter in range(max_iters):
+        gradient = compute_gradient_logistic(y, tx, w) + 2 * lambda_ * w
+        w = w - gamma * gradient
+        if iter % 100 == 0:
+            loss = compute_logistic_loss(y, tx, w) + lambda_ * np.squeeze(w.T.dot(w))
+            print(
+                "Current iteration={i}, loss={l} (with regularization)".format(
+                    i=iter, l=loss
+                )
+            )
+    loss = compute_logistic_loss(y, tx, w)
+    return w, loss
+
+############################## WHAT'S NEXT IS BONUS ########################################
+
+def compute_weighted_logistic_loss(y, tx, w, w_vec):
+    """
+    Compute the weighted logistic loss by negative log likelihood.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    w : numpy array of shape (D,)
+        The model weights.
+    w_vec : tuple of floats (w0, w1)
+        The weights for the positive and negative classes.
+
+    Returns:
+    loss : float
+        The weighted logistic loss.
+    """
+    y_pred = sigmoid(np.dot(tx, w))
+    y_pred = np.clip(y_pred, 1e-10, 1 - 1e-10)
+    return -np.mean(
+        w_vec[0] * y * np.log(y_pred) + w_vec[1] * (1 - y) * np.log(1 - y_pred)
+    )
+
+
+def compute_weighted_gradient_logistic(y, tx, w, w_vec):
+    """
+    Compute the gradient of the weighted logistic loss.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    w : numpy array of shape (D,)
+        The model weights.
+    w_vec : tuple of floats (w0, w1)
+        The weights for the positive and negative classes.
+
+    Returns:
+    gradient : numpy array of shape (D,)
+        The gradient of the weighted logistic loss with respect to w.
+    """
+    pred = sigmoid(tx.dot(w))
+    gradient1 = tx.T.dot(-w_vec[0] * y + w_vec[1] * pred)
+    gradient2 = (w_vec[0] - w_vec[1]) * (y * pred).T @ tx
+    return (gradient1 + gradient2) / len(y)
+
+
+def weighted_reg_logistic_regression(
+    y, tx, lambda_, initial_w, max_iters, gamma, weight
+):
+    """
+    Perform regularized weighted logistic regression using Gradient Descent.
+
+    Parameters:
+    y : numpy array of shape (N,)
+        The target binary labels (0 or 1).
+    tx : numpy array of shape (N, D)
+        The input data.
+    lambda_ : float
+        Regularization parameter.
+    initial_w : numpy array of shape (D,)
+        The initial weights.
+    max_iters : int
+        The maximum number of iterations.
+    gamma : float
+        The learning rate.
+    weight : tuple of floats (w0, w1)
+        The weights for the positive and negative classes.
+
+    Returns:
+    w : numpy array of shape (D,)
+        The optimized weights.
+    loss : float
+        The weighted logistic loss corresponding to the optimized weights.
+    """
+    if max_iters == 0:
+        return (initial_w, compute_weighted_logistic_loss(y, tx, initial_w, weight))
+
+    w = initial_w
+    for iter in range(max_iters):
+        gradient = (
+            compute_weighted_gradient_logistic(y, tx, w, weight) + 2 * lambda_ * w
+        )
+        w = w - gamma * gradient
+        if iter % 100 == 0:
+            loss = compute_weighted_logistic_loss(
+                y, tx, w, weight
+            ) + lambda_ * np.squeeze(w.T.dot(w))
+            print(
+                "Current iteration={i}, loss={l} (with regularization)".format(
+                    i=iter, l=loss
+                )
+            )
+    loss = compute_weighted_logistic_loss(y, tx, w, weight)
     return w, loss
