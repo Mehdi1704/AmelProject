@@ -145,3 +145,46 @@ def optimize_threshold_draft(y_true, y_scores):
 
 
 
+
+def f1_score_logistic(y_true, y_pred):
+
+    """
+    Calculates the F1-score between true labels and predicted labels.
+
+    Parameters:
+    y_true (numpy array): True labels (0 or 1)
+    y_pred (numpy array): Predicted labels (0 or 1)
+    """
+    # True Positives (TP)
+    tp = np.sum((y_true == 1) & (y_pred == 1))
+    # False Positives (FP)
+    fp = np.sum((y_true == 0) & (y_pred == 1))
+    # False Negatives (FN)
+    fn = np.sum((y_true == 1) & (y_pred == 0))
+
+    # Avoid division by zero
+    precision = tp / (tp + fp) if (tp + fp) != 0 else 0
+    recall = tp / (tp + fn) if (tp + fn) != 0 else 0
+
+    if (precision + recall) == 0:
+        return 0
+
+    f1 = 2 * (precision * recall) / (precision + recall)
+    return f1
+
+def optimize_threshold_logistic(y_true, y_scores):
+    best_threshold = None
+    best_f1 = -1
+
+    # Generate a list of potential thresholds to try
+    thresholds = np.linspace(0, 1, 100)
+
+    for threshold in thresholds:
+        # Convert scores to binary predictions using the threshold
+        y_pred = np.where(y_scores >= threshold, 1, 0)  # Use 0 and 1 labels
+        current_f1 = f1_score_logistic(y_true, y_pred)  # Use your custom function
+        if current_f1 > best_f1:
+            best_f1 = current_f1
+            best_threshold = threshold
+
+    return best_threshold, best_f1
