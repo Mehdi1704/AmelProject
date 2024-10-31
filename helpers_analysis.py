@@ -90,7 +90,8 @@ def f1_score(y_true, y_pred):
 # Function to optimize threshold
 def optimize_threshold(y_true, y_scores):
     best_threshold = None
-    best_f1 = -1
+    best_f1 = 0
+    best_accuracy = 0
 
     # Generate a list of potential thresholds to try
     thresholds = np.linspace(np.min(y_scores), np.max(y_scores), 100)
@@ -98,52 +99,13 @@ def optimize_threshold(y_true, y_scores):
     for threshold in thresholds:
         y_pred = np.where(y_scores >= threshold, 1, -1)
         current_f1 = f1_score(y_true, y_pred)
+        current_acc = accuracy(y_true, y_pred)
         if current_f1 > best_f1:
             best_f1 = current_f1
             best_threshold = threshold
+            best_accuracy = current_acc
 
-    return best_threshold, best_f1
-
-#######################
-
-
-def optimize_threshold_draft(y_true, y_scores):
-    """
-    Finds the threshold that maximizes the F1 score.
-
-    Parameters:
-    y_true (numpy array): True labels (-1 or 1)
-    y_scores (numpy array): Predicted scores from the model
-
-    Returns:
-    best_threshold (float): Threshold that gives the highest F1 score
-    best_f1 (float): The highest F1 score achieved
-    """
-    # Initialize variables
-    best_threshold = None
-    best_f1 = -1
-
-    # Define thresholds based on percentiles to avoid extreme values
-    score_min = np.percentile(y_scores, 5)
-    score_max = np.percentile(y_scores, 95)
-    thresholds = np.linspace(score_min, score_max, 100)
-
-    # Iterate over thresholds to find the best one
-    for threshold in thresholds:
-        # Convert scores to binary predictions using the threshold
-        y_pred = np.where(y_scores >= threshold, 1, -1)
-
-        # Compute the F1 score for these predictions
-        current_f1 = f1_score(y_true, y_pred)
-
-        # Update best threshold if current F1 is better
-        if current_f1 > best_f1:
-            best_f1 = current_f1
-            best_threshold = threshold
-
-    return best_threshold, best_f1
-
-
+    return best_threshold, best_f1, best_accuracy
 
 
 def f1_score_logistic(y_true, y_pred):

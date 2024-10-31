@@ -2,10 +2,8 @@ import numpy as np
 import csv
 
 def read_header(file_path):
-    """Reads the header (first row) from a CSV file."""
-    with open(file_path, 'r') as f:
-        reader = csv.reader(f)
-        header = next(reader)
+    """Reads the header (first row) from a CSV file using only numpy."""
+    header = np.genfromtxt(file_path, delimiter=',', dtype=str, max_rows=1)
     return header
 
 def load_data(file_path):
