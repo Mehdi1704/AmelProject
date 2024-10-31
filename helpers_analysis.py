@@ -1,5 +1,6 @@
 from helpers import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 def load_cleaned_csv_data(data_path, sub_sample=False):
     """
@@ -150,3 +151,83 @@ def optimize_threshold_logistic(y_true, y_scores):
             best_threshold = threshold
 
     return best_threshold, best_f1
+
+def compute_roc_auc(y_true, y_scores):
+    """
+    Computes the False Positive Rate (FPR), True Positive Rate (TPR), thresholds, and AUC.
+
+    Parameters:
+    y_true (numpy array): True binary labels (0 or 1)
+    y_scores (numpy array): Predicted scores or probabilities
+
+    Returns:
+    fpr (numpy array): False Positive Rates
+    tpr (numpy array): True Positive Rates
+    thresholds (numpy array): Thresholds used to compute FPR and TPR
+    auc (float): Area Under the ROC Curve
+    """
+    # Ensure y_true is binary (0 and 1)
+    y_true = y_true.astype(int)
+
+    # Sort scores and corresponding true labels in descending order
+    desc_score_indices = np.argsort(-y_scores)
+    y_scores_sorted = y_scores[desc_score_indices]
+    y_true_sorted = y_true[desc_score_indices]
+
+    # Append sentinel values at the beginning
+    y_scores_sorted = np.concatenate(([np.inf], y_scores_sorted))
+    y_true_sorted = np.concatenate(([0], y_true_sorted))
+
+    # Initialize TPR and FPR lists
+    tpr = [0]
+    fpr = [0]
+
+    P = np.sum(y_true)  # Total positive samples
+    N = len(y_true) - P  # Total negative samples
+
+    tp = 0  # True positives
+    fp = 0  # False positives
+
+    # Loop through sorted scores and compute TPR and FPR
+    for i in range(1, len(y_scores_sorted)):
+        if y_true_sorted[i] == 1:
+            tp += 1
+        else:
+            fp += 1
+        tpr.append(tp / P)
+        fpr.append(fp / N)
+
+    tpr = np.array(tpr)
+    fpr = np.array(fpr)
+
+    # Compute AUC using the trapezoidal rule
+    auc = np.trapz(tpr, fpr)
+
+    # Thresholds are the unique scores
+    thresholds = y_scores_sorted[1:]
+
+    return fpr, tpr, thresholds, auc
+
+def plot_roc_curve(fpr, tpr, auc, model_name='Model'):
+    """
+    Plot the ROC curve for a model.
+
+    Parameters:
+    fpr : array-like
+        False positive rates for each threshold.
+    tpr : array-like
+        True positive rates for each threshold.
+    auc : float
+        Area Under the Curve (AUC) value.
+    model_name : str, optional
+        Name of the model for labeling purposes.
+    """
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, label=f'{model_name} (AUC = {auc:.4f})')
+    plt.plot([0, 1], [0, 1], linestyle='--', label='Random Guessing')
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title(f'ROC Curve - {model_name}')
+    plt.legend(loc='lower right')
+    plt.grid(True)
+    plt.show()
